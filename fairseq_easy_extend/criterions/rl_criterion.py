@@ -28,7 +28,7 @@ class RLCriterion(FairseqCriterion):
         #padding mask, do not remove
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
-        print(outputs)
+        print('---------------------------------------', outputs)
 
         # # we take a softmax over outputs
         # # argmax over the softmax \ sampling (e.g. multinomial)
