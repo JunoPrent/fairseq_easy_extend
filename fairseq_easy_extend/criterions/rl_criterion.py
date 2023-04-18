@@ -28,18 +28,19 @@ class RLCriterion(FairseqCriterion):
         #padding mask, do not remove
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
+        print(outputs)
 
-        #we take a softmax over outputs
-        #argmax over the softmax \ sampling (e.g. multinomial)
-        #sampled_sentence = [4, 17, 18, 19, 20]
-        #sampled_sentence_string = tgt_dict.string([4, 17, 18, 19, 20])
-        #see dictionary class of fairseq
-        #target_sentence = "I am a sentence"
-        #with torch.no_grad()
-            #R(*) = eval_metric(sampled_sentence_string, target_sentence)
-            #R(*) is a number, BLEU, сhrf, etc.
+        # we take a softmax over outputs
+        # argmax over the softmax \ sampling (e.g. multinomial)
+        sampled_sentence = [4, 17, 18, 19, 20]
+        sampled_sentence_string = tgt_dict.string([4, 17, 18, 19, 20])
+        # see dictionary class of fairseq
+        target_sentence = "I am a sentence"
+        with torch.no_grad()
+            R(*) = eval_metric(sampled_sentence_string, target_sentence)
+            R(*) is a number, BLEU, сhrf, etc.
 
-        #loss = -log_prob(outputs)*R()
-        #loss = loss.mean()
+        loss = -log_prob(outputs)*R()
+        loss = loss.mean()
 
         return loss
