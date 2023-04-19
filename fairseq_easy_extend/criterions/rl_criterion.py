@@ -1,6 +1,9 @@
 
+import torch
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
+from fairseq.data import Dictionary
+from fairseq.scoring import meteor, bertscore
 
 from dataclasses import dataclass, field
 
@@ -51,6 +54,30 @@ class RLCriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
 
+    def eval_metric(self, sampled_sentence, target_sentence, method_type='meteor'):
+        """
+        Compute the evaluation metric between the predicted and target sentences.
+
+        Args:
+            sampled_sentence (str): The predicted sentence as a string.
+            target_sentence (str): The target sentence as a string.
+            method_type (str): The evaluation metric to use. Defaults to 'meteor'.
+
+        Returns:
+            float: The evaluation metric score between the two sentences.
+        """
+
+        if method_type.lower() == 'meteor':
+            scorer = meteor.METEORScorer()
+            score = scorer.score(sampled_sentence, target_sentence)
+        elif method_type.lower() == 'bertscore':
+            scorer = bertscore.BERTScoreScorer()
+            score = scorer.score([sampled_sentence], [target_sentence])[2][0]  # F1 score
+        else:
+            raise NotImplementedError(f"Method '{method_type}' not implemented.")
+
+        return score
+
     def _compute_loss(self, outputs, targets, masks=None):
         """
         outputs: batch x len x d_model
@@ -58,21 +85,31 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        #padding mask, do not remove
+        # Padding mask, do not remove
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
 
-        #we take a softmax over outputs
-        #argmax over the softmax \ sampling (e.g. multinomial)
-        #sampled_sentence = [4, 17, 18, 19, 20]
-        #sampled_sentence_string = tgt_dict.string([4, 17, 18, 19, 20])
-        #see dictionary class of fairseq
-        #target_sentence = "I am a sentence"
-        #with torch.no_grad()
-            #R(*) = eval_metric(sampled_sentence_string, target_sentence)
-            #R(*) is a number, BLEU, сhrf, etc.
+        # We take a softmax over outputs
+        softmax_outputs = torch.softmax(outputs, dim=-1)
 
-        #loss = -log_prob(sample_outputs)*R()
-        #loss = loss.mean()
+        # Argmax over the softmax or sampling (e.g. multinomial)
+        sampled_sentence = torch.argmax(softmax_outputs, dim=-1).tolist()
+
+        # Convert token indices to string representation using the target dictionary
+        tgt_dict = Dictionary.load("path/to/your/target/dictionary")
+        sampled_sentence_string = tgt_dict.string(sampled_sentence)
+
+        # Target sentence in string format
+        target_sentence = tgt_dict.string(targets.tolist())
+
+        with torch.no_grad():
+            # R(*) is a number, BLEU, сhrf, etc.
+            R = self.eval_metric(sampled_sentence_string, target_sentence, method_type='meteor')
+
+        # Loss = -log_prob(sample_outputs) * R()
+        log_probs = torch.log_softmax(outputs, dim=-1)
+        nll_loss = -log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
+        loss = nll_loss * R
+        loss = loss.mean()
 
         return loss
