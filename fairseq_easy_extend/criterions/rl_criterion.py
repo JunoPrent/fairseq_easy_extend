@@ -87,12 +87,13 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        # bsz = outputs.shape[0]
-        # seq_len = outputs.shape[1]
-        # vocab_size = outputs.shape[2]
+        bsz = outputs.size(0)
+        seq_len = outputs.size(1)
+        vocab_size = outputs.size(2)
 
-        probs = F.softmax(outputs, dim=-1)
-        sample_idx  = torch.multinomial(probs, 1, replacement=True)
+        probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
+        sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
+        
         self.tgt_dict = self.__init__.task.tgt_dict
         sampled_sentence_string = self.tgt_dict.string(sample_idx) #here you might also want to remove tokenization and bpe
         target_sentence_string = self.tgt_dict.string(targets)
