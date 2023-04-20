@@ -1,9 +1,11 @@
 
 import torch
+import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 from fairseq.data import Dictionary
 from fairseq.scoring import meteor, bertscore
+from fairseq.tasks
 
 from dataclasses import dataclass, field
 
@@ -85,31 +87,44 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        # Padding mask, do not remove
-        if masks is not None:
-            outputs, targets = outputs[masks], targets[masks]
 
-        # We take a softmax over outputs
-        softmax_outputs = torch.softmax(outputs, dim=-1)
+        bsz = outputs.size(0)
+        seq_len = outputs.size(1)
+        vocab_size = outputs.size(2)
 
-        # Argmax over the softmax or sampling (e.g. multinomial)
-        sampled_sentence = torch.argmax(softmax_outputs, dim=-1).tolist()
-
-        # Convert token indices to string representation using the target dictionary
-        tgt_dict = Dictionary.load("path/to/your/target/dictionary")
-        sampled_sentence_string = tgt_dict.string(sampled_sentence)
-
-        # Target sentence in string format
-        target_sentence = tgt_dict.string(targets.tolist())
+        probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
+        sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
+        self.tgt_dict = self.__init__.task.tgt_dict
+        sampled_sentence_string = self.tgt_dict.string(sample_idx) #here you might also want to remove tokenization and bpe
+        target_sentence_string = self.tgt_dict.string(targets)
 
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
-            R = self.eval_metric(sampled_sentence_string, target_sentence, method_type='meteor')
+            reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='meteor')
+
+        # Padding mask, do not remove
+        if masks is not None:
+            outputs, targets = outputs[masks], targets[masks]
+            reward, sample_idx = reward[masks], sample_idx[masks]
+
+        # # We take a softmax over outputs
+        # softmax_outputs = torch.softmax(outputs, dim=-1)
+
+        # # Argmax over the softmax or sampling (e.g. multinomial)
+        # sampled_sentence = torch.argmax(softmax_outputs, dim=-1).tolist()
+
+        # # Convert token indices to string representation using the target dictionary
+        # tgt_dict = Dictionary.load("path/to/your/target/dictionary")
+        # sampled_sentence_string = tgt_dict.string(sampled_sentence)
+
+        # # Target sentence in string format
+        # target_sentence = tgt_dict.string(targets.tolist())
+
 
         # Loss = -log_prob(sample_outputs) * R()
-        log_probs = torch.log_softmax(outputs, dim=-1)
-        nll_loss = -log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
-        loss = nll_loss * R
+        log_probs = F.log_softmax(outputs, dim=-1)
+        # nll_loss = -log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
+        loss = -log_probs * reward
         loss = loss.mean()
 
         return loss
