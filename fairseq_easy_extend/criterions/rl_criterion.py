@@ -91,8 +91,8 @@ class RLCriterion(FairseqCriterion):
         seq_len = outputs.shape[1]
         vocab_size = outputs.shape[2]
 
-        probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
-        sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
+        probs = F.softmax(outputs, dim=-1)
+        sample_idx  = torch.multinomial(probs, 1, replacement=True)
         self.tgt_dict = self.__init__.task.tgt_dict
         sampled_sentence_string = self.tgt_dict.string(sample_idx) #here you might also want to remove tokenization and bpe
         target_sentence_string = self.tgt_dict.string(targets)
