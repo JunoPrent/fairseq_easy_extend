@@ -87,9 +87,9 @@ class RLCriterion(FairseqCriterion):
         """
 
 
-        bsz = outputs.size(0)
-        seq_len = outputs.size(1)
-        vocab_size = outputs.size(2)
+        bsz = outputs.shape[0]
+        seq_len = outputs.shape[1]
+        vocab_size = outputs.shape[2]
 
         probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
         sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
