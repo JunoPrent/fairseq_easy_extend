@@ -86,10 +86,9 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-
-        bsz = outputs.shape[0]
-        seq_len = outputs.shape[1]
-        vocab_size = outputs.shape[2]
+        # bsz = outputs.shape[0]
+        # seq_len = outputs.shape[1]
+        # vocab_size = outputs.shape[2]
 
         probs = F.softmax(outputs, dim=-1)
         sample_idx  = torch.multinomial(probs, 1, replacement=True)
