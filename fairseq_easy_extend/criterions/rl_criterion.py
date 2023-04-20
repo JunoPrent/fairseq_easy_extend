@@ -5,7 +5,6 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 from fairseq.data import Dictionary
 from fairseq.scoring import meteor, bertscore
-from fairseq.tasks
 
 from dataclasses import dataclass, field
 
