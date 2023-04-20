@@ -37,8 +37,9 @@ class RLCriterion(FairseqCriterion):
         tgt_tokens, prev_output_tokens = sample["target"], sample["prev_target"]
 
         outputs = model(src_tokens, src_lengths, prev_output_tokens, tgt_tokens)
-        masks = outputs.get("mask", None),
-        loss = self._compute_loss(outputs, tgt_tokens, masks)
+        outs = outputs["word_ins"].get("out", None)
+        masks = outputs["word_ins"].get("mask", None)
+        loss = self._compute_loss(outs, tgt_tokens, masks)
 
         # NOTE:
         # we don't need to use sample_size as denominator for the gradient
