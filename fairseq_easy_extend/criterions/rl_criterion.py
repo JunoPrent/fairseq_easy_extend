@@ -75,7 +75,8 @@ class RLCriterion(FairseqCriterion):
             score = scorer.score(sampled_sentence, target_sentence)
         elif method_type.lower() == 'bertscore':
             scorer = bertscore.BertScoreScorer(bertscore.BertScoreScorerConfig)
-            score = scorer.score(sampled_sentence, target_sentence)
+            scorer.add_string(target_sentence, sampled_sentence)
+            score = scorer.score()
         else:
             raise NotImplementedError(f"Method '{method_type}' not implemented.")
 
