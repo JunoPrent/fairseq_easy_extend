@@ -107,7 +107,11 @@ class RLCriterion(FairseqCriterion):
         # Padding mask, do not remove
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
-            reward, sample_idx = reward[masks], sample_idx[masks]
+            print(reward, sample_idx)
+            reward = reward[masks]
+            sample_idx = sample_idx[masks]
+            # Expand it to make it of a shape BxT - each token gets the same reward value
+            # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
 
         # # We take a softmax over outputs
         # softmax_outputs = torch.softmax(outputs, dim=-1)
