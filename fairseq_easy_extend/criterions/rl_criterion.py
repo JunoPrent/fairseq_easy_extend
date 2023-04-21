@@ -71,8 +71,9 @@ class RLCriterion(FairseqCriterion):
         """
 
         if method_type.lower() == 'meteor':
-            scorer = meteor.MeteorScorer()
-            score = scorer.score(sampled_sentence, target_sentence)
+            scorer = meteor.MeteorScorer(meteor.MeteorScorerConfig)
+            scorer.add_string(target_sentence, sampled_sentence)
+            score = scorer.score()
         elif method_type.lower() == 'bertscore':
             scorer = bertscore.BertScoreScorer(bertscore.BertScoreScorerConfig)
             scorer.add_string(target_sentence, sampled_sentence)
