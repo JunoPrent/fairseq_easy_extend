@@ -101,7 +101,7 @@ class RLCriterion(FairseqCriterion):
 
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
-            reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='meteor')
+            reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='bertscore')
 
         # Padding mask, do not remove
         if masks is not None:
