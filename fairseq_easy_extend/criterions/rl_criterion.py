@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 from fairseq.data import Dictionary
-from fairseq.scoring.metero import MeteorScorer
+from fairseq.scoring import meteor, bertscore
 
 from dataclasses import dataclass, field
 
@@ -71,7 +71,7 @@ class RLCriterion(FairseqCriterion):
         """
 
         if method_type.lower() == 'meteor':
-            scorer = meteor.METEORScorer()
+            scorer = meteor.MeteorScorer()
             score = scorer.score(sampled_sentence, target_sentence)
         elif method_type.lower() == 'bertscore':
             scorer = bertscore.BERTScoreScorer()
