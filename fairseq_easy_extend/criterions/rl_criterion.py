@@ -74,8 +74,8 @@ class RLCriterion(FairseqCriterion):
             scorer = meteor.MeteorScorer()
             score = scorer.score(sampled_sentence, target_sentence)
         elif method_type.lower() == 'bertscore':
-            scorer = bertscore.BertScoreScorer({'bert_score_lang': 'en', 'r': target_sentence, 'c': sampled_sentence})
-            score = scorer.score()
+            scorer = bertscore.BertScoreScorer(bertscore.BertScoreScorerConfig)
+            score = scorer.score(sampled_sentence, target_sentence)
         else:
             raise NotImplementedError(f"Method '{method_type}' not implemented.")
 
