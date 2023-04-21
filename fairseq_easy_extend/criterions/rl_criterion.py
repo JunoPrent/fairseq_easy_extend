@@ -131,7 +131,7 @@ class RLCriterion(FairseqCriterion):
 
         # Loss = -log_prob(sample_outputs) * R()
         log_probs = F.log_softmax(outputs, dim=-1)
-        # nll_loss = -log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
+        log_probs = log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
         loss = -log_probs * reward
         loss = loss.mean()
 
