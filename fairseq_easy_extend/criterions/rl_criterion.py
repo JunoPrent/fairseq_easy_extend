@@ -96,7 +96,8 @@ class RLCriterion(FairseqCriterion):
         sample_idx = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
 
         self.tgt_dict = self.task.tgt_dict
-        sampled_sentence = self.tgt_dict.string(sample_idx) #here you might also want to remove tokenization and bpe
+        ### How do we remove tokenization for meteor? ###
+        sampled_sentence = self.tgt_dict.string(sample_idx) # here you might also want to remove tokenization and bpe
         target_sentence = self.tgt_dict.string(targets)
 
         with torch.no_grad():
@@ -114,7 +115,7 @@ class RLCriterion(FairseqCriterion):
 
         # Loss = -log_prob(sample_outputs) * R()
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs = log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
+        log_probs = log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1) ### Not sure if this is correct ###
         loss = -log_probs * reward
         loss = loss.mean()
 
