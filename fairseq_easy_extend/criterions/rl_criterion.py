@@ -109,7 +109,7 @@ class RLCriterion(FairseqCriterion):
 
         # Padding mask, do not remove
         if masks is not None:
-            print(outputs.size, type(outputs), targets.size, type(targets), sample_idx.size, type(sample_idx))
+            print(outputs.shape, type(outputs), targets.shape, type(targets), sample_idx.shape, type(sample_idx))
             outputs, targets = outputs[masks], targets[masks]
             reward = reward[masks]
             sample_idx = sample_idx[masks]
