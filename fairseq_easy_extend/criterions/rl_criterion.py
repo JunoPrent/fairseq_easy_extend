@@ -92,7 +92,6 @@ class RLCriterion(FairseqCriterion):
         bsz = outputs.size(0)
         seq_len = outputs.size(1)
         vocab_size = outputs.size(2)
-        print(bsz, seq_len, vocab_size)
 
         probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
         sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
@@ -103,7 +102,7 @@ class RLCriterion(FairseqCriterion):
 
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
-            reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='bertscore')
+            reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='meteor')
             # Expand it to make it of a shape BxT - each token gets the same reward value
             # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
             reward = torch.Tensor([[reward] * int(seq_len)] * int(bsz))
