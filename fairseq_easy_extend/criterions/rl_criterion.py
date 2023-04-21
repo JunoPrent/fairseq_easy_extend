@@ -105,7 +105,7 @@ class RLCriterion(FairseqCriterion):
             reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='bertscore')
             # Expand it to make it of a shape BxT - each token gets the same reward value
             # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
-            reward = [reward] * seq_len
+            reward = [[reward] * int(seq_len)] * int(bsz)
 
         # Padding mask, do not remove
         if masks is not None:
