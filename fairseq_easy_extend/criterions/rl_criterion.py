@@ -101,7 +101,7 @@ class RLCriterion(FairseqCriterion):
 
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
-            print(target_sentence)
+            print(sampled_sentence)
             reward = self.eval_metric(sampled_sentence, target_sentence, method_type='meteor')
             # Expand it to make it of a shape BxT - each token gets the same reward value
             # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
