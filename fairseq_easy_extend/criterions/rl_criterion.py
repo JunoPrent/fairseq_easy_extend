@@ -103,6 +103,9 @@ class RLCriterion(FairseqCriterion):
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
             reward = self.eval_metric(sampled_sentence_string, target_sentence_string, method_type='bertscore')
+            # Expand it to make it of a shape BxT - each token gets the same reward value
+            # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
+            reward = [reward] * seq_len
 
         # Padding mask, do not remove
         if masks is not None:
@@ -110,8 +113,6 @@ class RLCriterion(FairseqCriterion):
             print(reward, sample_idx)
             reward = reward[masks]
             sample_idx = sample_idx[masks]
-            # Expand it to make it of a shape BxT - each token gets the same reward value
-            # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
 
         # # We take a softmax over outputs
         # softmax_outputs = torch.softmax(outputs, dim=-1)
