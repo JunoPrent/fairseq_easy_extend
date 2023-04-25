@@ -1,8 +1,8 @@
 import torch
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring import Scorer as BleuScorer
-from fairseq.scoring import MeteorScorer
+from fairseq.scoring.bleu import Scorer as BleuScorer
+from fairseq.scoring.meteor import MeteorScorer
 from fairseq.data import Dictionary
 
 from dataclasses import dataclass, field
