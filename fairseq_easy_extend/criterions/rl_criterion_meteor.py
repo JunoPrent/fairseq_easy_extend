@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
-    sentence_level_metric: str = field(default="sacrebleu",
+    sentence_level_metric: str = field(default="bleu",
                                        metadata={"help": "sentence level metric"})
 
 @register_criterion("rl_loss_new", dataclass=RLCriterionConfig)
