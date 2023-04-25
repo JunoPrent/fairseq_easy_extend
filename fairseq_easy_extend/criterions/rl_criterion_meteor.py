@@ -2,7 +2,10 @@ import torch
 import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring import meteor
+from nltk.translate import meteor_score
+import nltk
+nltk.download('punkt')
+
 
 from dataclasses import dataclass, field
 
@@ -45,20 +48,48 @@ class RLCriterionMeteor(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def _compute_loss(self, outputs, targets, masks=None):
+        """
+        outputs: batch x len x d_model
+        targets: batch x len
+        masks:   batch x len
+        """
+
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
 
-        # Convert sampled and target sentences to strings
-        with torch.no_grad():
-            sampled_sentence = self.task.target_dictionary.string(outputs.argmax(-1).cpu().numpy())
-            target_sentence = self.task.target_dictionary.string(targets.cpu().numpy())
+        # Convert model outputs to probabilities
+        probs = F.softmax(outputs, dim=-1)
+
+        # Sample sentences from the output probabilities
+        sampled_sentences = torch.multinomial(probs, 1).squeeze(-1)
+
+        loss = 0
+        n_sentences = targets.size(0)
+        for i in range(n_sentences):
+            # Convert sampled and target sentences to strings
+            sampled_sentence = self.task.target_dictionary.string(sampled_sentences[i])
+            target_sentence = self.task.target_dictionary.string(targets[i])
 
             # Calculate the METEOR score
-            meteor_score = meteor([target_sentence], sampled_sentence)
+            meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=target_sentence, hypothesis=sampled_sentence)
 
-        # Compute the loss
-        log_prob = torch.log_softmax(outputs, dim=-1)
-        log_prob_sampled = torch.gather(log_prob, 2, outputs.argmax(-1).unsqueeze(-1)).squeeze(-1)
-        loss = -(log_prob_sampled * meteor_score).mean()
+            # Calculate the loss for the current sentence pair
+            log_prob = F.log_softmax(outputs[i], dim=-1)
+            log_prob_sentence = log_prob[range(len(sampled_sentences[i])), sampled_sentences[i]].sum()
+            loss += -log_prob_sentence * meteor_score
+
+        # Calculate the average loss
+        loss /= n_sentences
 
         return loss
+    
+    def eval_metric(self, hypothesis, reference, method_type='meteor'):
+        if method_type == 'meteor':
+            # Tokenize the hypothesis and reference sentences
+            # hypothesis_tokens = nltk.word_tokenize(hypothesis)
+            # reference_tokens = nltk.word_tokenize(reference)
+
+            # Calculate the METEOR score
+            score = meteor_score.single_meteor_score(reference, hypothesis)
+
+            return score
