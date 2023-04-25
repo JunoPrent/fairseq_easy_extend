@@ -2,11 +2,7 @@ import torch
 import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from nltk.translate import meteor_score
-import nltk
-nltk.download('punkt')
-nltk.download('wordnet')
-
+from fairseq.scoring import METEORScorer
 
 from dataclasses import dataclass, field
 
@@ -17,9 +13,10 @@ class RLCriterionMeteorConfig(FairseqDataclass):
 
 @register_criterion("rl_criterion_meteor", dataclass=RLCriterionMeteorConfig)
 class RLCriterionMeteor(FairseqCriterion):
-    def init(self, task, sentence_level_metric):
-        super().init(task)
+    def __init__(self, task, sentence_level_metric):
+        super().__init__(task)
         self.metric = sentence_level_metric
+        self.scorer = METEORScorer()
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample."""
@@ -71,10 +68,8 @@ class RLCriterionMeteor(FairseqCriterion):
             sampled_sentence = self.task.target_dictionary.string(sampled_sentences[i].unsqueeze(0))
             target_sentence = self.task.target_dictionary.string(targets[i].unsqueeze(0))
 
-            meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=nltk.word_tokenize(target_sentence), 
-                                                                           hypothesis=nltk.word_tokenize(sampled_sentence))
             # Calculate the METEOR score
-            # meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=target_sentence, hypothesis=sampled_sentence)
+            meteor_score = self.scorer.score(target_sentence, sampled_sentence)
 
             # Calculate the loss for the current sentence pair
             log_prob = F.log_softmax(outputs[i], dim=-1)
@@ -85,14 +80,3 @@ class RLCriterionMeteor(FairseqCriterion):
         loss /= n_sentences
 
         return loss
-    
-    def eval_metric(self, hypothesis, reference, method_type='meteor'):
-        if method_type == 'meteor':
-            # Tokenize the hypothesis and reference sentences
-            # hypothesis_tokens = nltk.word_tokenize(hypothesis)
-            # reference_tokens = nltk.word_tokenize(reference)
-
-            # Calculate the METEOR score
-            score = meteor_score.single_meteor_score(reference, hypothesis)
-
-            return score
