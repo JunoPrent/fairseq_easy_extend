@@ -18,7 +18,7 @@ class RLCriterion(FairseqCriterion):
     def __init__(self, task, sentence_level_metric):
         super().__init__(task)
         self.metric = sentence_level_metric
-        self.tgt_dict = Dictionary.load(os.path.join(task.data, 'dict.{}.txt'.format(task.target_lang)))
+        # self.tgt_dict = Dictionary.load(os.path.join(task.data, 'dict.{}.txt'.format(task.target_lang)))
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -57,11 +57,16 @@ class RLCriterion(FairseqCriterion):
             outputs, targets = outputs[masks], targets[masks]
 
         with torch.no_grad():
+            if masks is not None:
+                outputs, targets = outputs[masks], targets[masks]
+
+        with torch.no_grad():
             logits = F.softmax(outputs, dim=-1)
             sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
             sampled_sentence = sampled_indices.tolist()
-            sampled_sentence_string = self.tgt_dict.string(sampled_sentence)
-            target_sentence = self.tgt_dict.string(targets.tolist())
+            tgt_dict = self.task.target_dictionary
+            sampled_sentence_string = tgt_dict.string(sampled_sentence)
+            target_sentence = tgt_dict.string(targets.tolist())
 
             if self.metric == "bleu":
                 R = sentence_bleu([target_sentence], sampled_sentence_string)
@@ -74,5 +79,3 @@ class RLCriterion(FairseqCriterion):
         log_probs_selected = log_probs.gather(-1, sampled_indices.unsqueeze(-1)).squeeze(-1)
         loss = -log_probs_selected * R
         loss = loss.mean()
-
-        return loss
