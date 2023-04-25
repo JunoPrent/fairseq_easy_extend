@@ -1,10 +1,10 @@
-
 import torch
 import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring import meteor, bertscore
-
+from fairseq.data import Dictionary
+from sacrebleu import sentence_bleu
+from nltk.translate.meteor_score import single_meteor_score
 from dataclasses import dataclass, field
 
 @dataclass
@@ -12,12 +12,10 @@ class RLCriterionConfig(FairseqDataclass):
     sentence_level_metric: str = field(default="bleu",
                                        metadata={"help": "sentence level metric"})
 
-
 @register_criterion("rl_loss", dataclass=RLCriterionConfig)
 class RLCriterion(FairseqCriterion):
     def __init__(self, task, sentence_level_metric):
         super().__init__(task)
-        self.task = task
         self.metric = sentence_level_metric
 
     def forward(self, model, sample, reduce=True):
@@ -39,11 +37,9 @@ class RLCriterion(FairseqCriterion):
         outputs = model(src_tokens, src_lengths, prev_output_tokens, tgt_tokens)
         outs = outputs["word_ins"].get("out", None)
         masks = outputs["word_ins"].get("mask", None)
+
         loss = self._compute_loss(outs, tgt_tokens, masks)
 
-        # NOTE:
-        # we don't need to use sample_size as denominator for the gradient
-        # here sample_size is just used for logging
         sample_size = 1
         logging_output = {
             "loss": loss.detach(),
@@ -52,37 +48,8 @@ class RLCriterion(FairseqCriterion):
             "nsentences": nsentences,
             "sample_size": sample_size,
         }
-
         return loss, sample_size, logging_output
 
-
-    def eval_metric(self, sampled_sentence, target_sentence, method_type='meteor'):
-        """
-        Compute the evaluation metric between the predicted and target sentences.
-
-        Args:
-            sampled_sentence (str): The predicted sentence as a string.
-            target_sentence (str): The target sentence as a string.
-            method_type (str): The evaluation metric to use. Defaults to 'meteor'.
-
-        Returns:
-            float: The evaluation metric score between the two sentences.
-        """
-
-        if method_type.lower() == 'meteor':
-            scorer = meteor.MeteorScorer(meteor.MeteorScorerConfig)
-            scorer.add_string(target_sentence, sampled_sentence)
-            score = scorer.score()
-        elif method_type.lower() == 'bertscore':
-            scorer = bertscore.BertScoreScorer(bertscore.BertScoreScorerConfig)
-            scorer.add_string(target_sentence, sampled_sentence)
-            score = scorer.score()
-        else:
-            raise NotImplementedError(f"Method '{method_type}' not implemented.")
-
-        return score
-
-    
     def _compute_loss(self, outputs, targets, masks=None):
         """
         outputs: batch x len x d_model
@@ -90,41 +57,34 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        bsz, seq_len, vocab_size = outputs.size(0), outputs.size(1), outputs.size(2)
+        #padding mask, do not remove
+        if masks is not None:
+            masked_indices = masks.nonzero(as_tuple=True)
 
-        probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
-        sample_idx = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
-
-        self.tgt_dict = self.task.tgt_dict
-        ### How do we remove tokenization for meteor? ###
-        sampled_sentence = self.tgt_dict.string(sample_idx) # here you might also want to remove tokenization and bpe
-        target_sentence = self.tgt_dict.string(targets)
-
-        # Tokenize sentences
-        sample_idx_tokens = self.tgt_dict.encode_line(sampled_sentence, append_eos=False, add_if_not_exist=False).long().view(-1)
-        targets_tokens = self.tgt_dict.encode_line(target_sentence, append_eos=False, add_if_not_exist=False).long().view(-1)
-
-        # Convert tokenized sentences back to strings, but with spaces between tokens
-        sampled_sentence = self.tgt_dict.string(sample_idx_tokens)
-        target_sentence = self.tgt_dict.string(targets_tokens)
+            outputs_masked = outputs[masked_indices]
+            targets_masked = targets[masked_indices]
 
         with torch.no_grad():
-            # R(*) is a number, BLEU, сhrf, etc.
-            reward = self.eval_metric(sampled_sentence, target_sentence, method_type='meteor')
-            # Expand it to make it of a shape BxT - each token gets the same reward value
-            # (e.g. bleu is 20, so each token gets reward of 20 [20,20,20,20,20])
-            reward = torch.Tensor([[reward] * int(seq_len)] * int(bsz))
+            logits = F.softmax(outputs_masked, dim=-1)
+            sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
+            sampled_sentence = sampled_indices.tolist()
 
-        # Padding mask, do not remove
-        if masks is not None:
-            outputs, targets = outputs[masks], targets[masks]
-            reward = reward[masks]
-            sample_idx = sample_idx[masks]
+            tgt_dict = self.task.target_dictionary
+            sampled_sentence_string = tgt_dict.string(sampled_sentence)
+            target_sentence = tgt_dict.string(targets_masked.tolist())
 
-        # Loss = -log_prob(sample_outputs) * R()
+            if self.metric == "bleu":
+                R = sentence_bleu(target_sentence, [sampled_sentence_string])
+                R = R.score  # Convert BLEUScore object to numeric value
+            elif self.metric == "meteor":
+                R = single_meteor_score(target_sentence, sampled_sentence_string)
+            else:
+                raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
+
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs = log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1) ### Not sure if this is correct ###
-        loss = -log_probs * reward
+        log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
+        loss = -log_probs_selected * R
         loss = loss.mean()
 
         return loss
+
