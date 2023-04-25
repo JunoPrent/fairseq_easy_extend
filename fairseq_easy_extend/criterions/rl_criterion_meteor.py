@@ -5,6 +5,7 @@ from fairseq.dataclass import FairseqDataclass
 from nltk.translate import meteor_score
 import nltk
 nltk.download('punkt')
+nltk.download('wordnet')
 
 
 from dataclasses import dataclass, field
