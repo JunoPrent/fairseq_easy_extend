@@ -83,6 +83,7 @@ class RLCriterion(FairseqCriterion):
 
         return score
 
+    
     def _compute_loss(self, outputs, targets, masks=None):
         """
         outputs: batch x len x d_model
@@ -101,8 +102,8 @@ class RLCriterion(FairseqCriterion):
         target_sentence = self.tgt_dict.string(targets)
 
         # Tokenize sentences
-        sample_idx_tokens = self.tgt_dict.encode(sampled_sentence, add_if_not_exist=False)
-        targets_tokens = self.tgt_dict.encode(target_sentence, add_if_not_exist=False)
+        sample_idx_tokens = self.tgt_dict.encode_line(sampled_sentence, append_eos=False, add_if_not_exist=False).long().view(-1)
+        targets_tokens = self.tgt_dict.encode_line(target_sentence, append_eos=False, add_if_not_exist=False).long().view(-1)
 
         # Convert tokenized sentences back to strings, but with spaces between tokens
         sampled_sentence = self.tgt_dict.string(sample_idx_tokens)
