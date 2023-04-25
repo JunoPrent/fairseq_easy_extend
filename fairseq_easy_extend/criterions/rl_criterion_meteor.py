@@ -1,17 +1,15 @@
 import torch
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring.bleu import SacrebleuScorer
-from fairseq.scoring.meteor import MeteorScorer
 from fairseq.data import Dictionary
-
+from sacrebleu import sentence_bleu
+from nltk.translate.meteor_score import single_meteor_score
 from dataclasses import dataclass, field
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
-    sentence_level_metric: str = field(default="bleu",
+    sentence_level_metric: str = field(default="sacrebleu",
                                        metadata={"help": "sentence level metric"})
-
 
 @register_criterion("rl_loss_new", dataclass=RLCriterionConfig)
 class RLCriterion(FairseqCriterion):
@@ -19,12 +17,6 @@ class RLCriterion(FairseqCriterion):
         super().__init__(task)
         self.metric = sentence_level_metric
         self.dictionary = task.target_dictionary
-        if self.metric == 'bleu':
-            self.scorer = SacrebleuScorer(task.args)
-        elif self.metric == 'meteor':
-            self.scorer = MeteorScorer(task.args)
-        else:
-            raise ValueError(f"Unsupported sentence-level metric: {self.metric}")
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -43,15 +35,11 @@ class RLCriterion(FairseqCriterion):
         tgt_tokens, prev_output_tokens = sample["target"], sample["prev_target"]
 
         outputs = model(src_tokens, src_lengths, prev_output_tokens, tgt_tokens)
-        #get loss only on tokens, not on lengths
         outs = outputs["word_ins"].get("out", None)
         masks = outputs["word_ins"].get("mask", None)
 
         loss = self._compute_loss(outs, tgt_tokens, masks)
 
-        # NOTE:
-        # we don't need to use sample_size as denominator for the gradient
-        # here sample_size is just used for logging
         sample_size = 1
         logging_output = {
             "loss": loss.detach(),
@@ -60,10 +48,9 @@ class RLCriterion(FairseqCriterion):
             "nsentences": nsentences,
             "sample_size": sample_size,
         }
-
+        return loss, sample_size, logging_output
 
     def _compute_loss(self, outputs, targets, masks=None):
-
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
 
@@ -76,8 +63,13 @@ class RLCriterion(FairseqCriterion):
             # Calculate sentence-level metric scores
             scores = []
             for pred_sent, tgt_sent in zip(predicted_sentences, target_sentences):
-                self.scorer.add_string(tgt_sent, pred_sent)
-                scores.append(self.scorer.score())
+                if self.metric == 'sacrebleu':
+                    score = sentence_bleu(pred_sent, [tgt_sent]).score
+                elif self.metric == 'meteor':
+                    score = single_meteor_score(tgt_sent, pred_sent)
+                else:
+                    raise ValueError(f"Unsupported sentence-level metric: {self.metric}")
+                scores.append(score)
             R = torch.tensor(scores, device=outputs.device)
 
         # Calculate loss
