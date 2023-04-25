@@ -67,8 +67,9 @@ class RLCriterionMeteor(FairseqCriterion):
         n_sentences = targets.size(0)
         for i in range(n_sentences):
             # Convert sampled and target sentences to strings
-            sampled_sentence = self.task.target_dictionary.string(sampled_sentences[i])
-            target_sentence = self.task.target_dictionary.string(targets[i])
+            sampled_sentence = self.task.target_dictionary.string(sampled_sentences[i].unsqueeze(0))
+            target_sentence = self.task.target_dictionary.string(targets[i].unsqueeze(0))
+
 
             # Calculate the METEOR score
             meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=target_sentence, hypothesis=sampled_sentence)
