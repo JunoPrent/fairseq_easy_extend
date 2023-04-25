@@ -70,9 +70,10 @@ class RLCriterionMeteor(FairseqCriterion):
             sampled_sentence = self.task.target_dictionary.string(sampled_sentences[i].unsqueeze(0))
             target_sentence = self.task.target_dictionary.string(targets[i].unsqueeze(0))
 
-
+            meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=nltk.word_tokenize(target_sentence), 
+                                                                           hypothesis=nltk.word_tokenize(sampled_sentence))
             # Calculate the METEOR score
-            meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=target_sentence, hypothesis=sampled_sentence)
+            # meteor_score = nltk.translate.meteor_score.single_meteor_score(reference=target_sentence, hypothesis=sampled_sentence)
 
             # Calculate the loss for the current sentence pair
             log_prob = F.log_softmax(outputs[i], dim=-1)
