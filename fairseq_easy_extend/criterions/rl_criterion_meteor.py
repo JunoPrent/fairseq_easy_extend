@@ -1,4 +1,6 @@
+import os
 import torch
+import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 from fairseq.data import Dictionary
@@ -16,7 +18,7 @@ class RLCriterion(FairseqCriterion):
     def __init__(self, task, sentence_level_metric):
         super().__init__(task)
         self.metric = sentence_level_metric
-        self.dictionary = task.target_dictionary
+        self.tgt_dict = Dictionary.load(os.path.join(task.data, 'dict.{}.txt'.format(task.target_lang)))
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -55,26 +57,22 @@ class RLCriterion(FairseqCriterion):
             outputs, targets = outputs[masks], targets[masks]
 
         with torch.no_grad():
-            # Convert predicted output tokens to sentences
-            predicted_sentences = [self.dictionary.string(t) for t in outputs.argmax(dim=-1)]
-            # Convert target tokens to sentences
-            target_sentences = [self.dictionary.string(t) for t in targets]
+            logits = F.softmax(outputs, dim=-1)
+            sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
+            sampled_sentence = sampled_indices.tolist()
+            sampled_sentence_string = self.tgt_dict.string(sampled_sentence)
+            target_sentence = self.tgt_dict.string(targets.tolist())
 
-            # Calculate sentence-level metric scores
-            scores = []
-            for pred_sent, tgt_sent in zip(predicted_sentences, target_sentences):
-                if self.metric == 'sacrebleu':
-                    score = sentence_bleu(pred_sent, [tgt_sent]).score
-                elif self.metric == 'meteor':
-                    score = single_meteor_score(tgt_sent, pred_sent)
-                else:
-                    raise ValueError(f"Unsupported sentence-level metric: {self.metric}")
-                scores.append(score)
-            R = torch.tensor(scores, device=outputs.device)
+            if self.metric == "bleu":
+                R = sentence_bleu([target_sentence], sampled_sentence_string)
+            elif self.metric == "meteor":
+                R = single_meteor_score(target_sentence, sampled_sentence_string)
+            else:
+                raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
 
-        # Calculate loss
-        log_probs = torch.log_softmax(outputs, dim=-1)
-        loss = -log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1) * R
+        log_probs = F.log_softmax(outputs, dim=-1)
+        log_probs_selected = log_probs.gather(-1, sampled_indices.unsqueeze(-1)).squeeze(-1)
+        loss = -log_probs_selected * R
         loss = loss.mean()
 
         return loss
