@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring import METEORScorer
+from fairseq.scoring.meteor import MeteorScorer
 
 from dataclasses import dataclass, field
 
@@ -16,7 +16,7 @@ class RLCriterionMeteor(FairseqCriterion):
     def __init__(self, task, sentence_level_metric):
         super().__init__(task)
         self.metric = sentence_level_metric
-        self.scorer = METEORScorer()
+        self.scorer = MeteorScorer()
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample."""
