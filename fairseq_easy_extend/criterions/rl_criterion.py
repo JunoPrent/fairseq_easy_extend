@@ -100,6 +100,14 @@ class RLCriterion(FairseqCriterion):
         sampled_sentence = self.tgt_dict.string(sample_idx) # here you might also want to remove tokenization and bpe
         target_sentence = self.tgt_dict.string(targets)
 
+        # Tokenize sentences
+        sample_idx_tokens = self.tgt_dict.encode(sampled_sentence, add_if_not_exist=False)
+        targets_tokens = self.tgt_dict.encode(target_sentence, add_if_not_exist=False)
+
+        # Convert tokenized sentences back to strings, but with spaces between tokens
+        sampled_sentence = self.tgt_dict.string(sample_idx_tokens)
+        target_sentence = self.tgt_dict.string(targets_tokens)
+
         with torch.no_grad():
             # R(*) is a number, BLEU, сhrf, etc.
             reward = self.eval_metric(sampled_sentence, target_sentence, method_type='meteor')
