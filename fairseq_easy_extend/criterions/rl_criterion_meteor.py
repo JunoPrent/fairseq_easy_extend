@@ -76,7 +76,7 @@ class RLCriterion(FairseqCriterion):
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
             if self.metric == "bleu":
-                R = sentence_bleu(target_sentence, sampled_sentence_string)
+                R = sentence_bleu(target_sentence, [sampled_sentence_string])
             elif self.metric == "meteor":
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
