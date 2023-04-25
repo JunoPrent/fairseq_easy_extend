@@ -90,21 +90,3 @@ class RLCriterion(FairseqCriterion):
         loss = loss.mean()
 
         return loss
-    
-    @classmethod
-    def reduce_metrics(cls, logging_outputs) -> None:
-        """Aggregate logging outputs from data parallel training."""
-        loss_sum = sum(log.get("loss", 0) for log in logging_outputs)
-        nll_loss_sum = sum(log.get("nll_loss", 0) for log in logging_outputs)
-        ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
-        nsentences = sum(log.get("nsentences", 0) for log in logging_outputs)
-        sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
-
-        # Use the new metric reduction API
-        metrics.log_scalar("loss", loss_sum / sample_size, sample_size, round=3)
-        metrics.log_scalar("nll_loss", nll_loss_sum / ntokens, ntokens, round=3)
-        metrics.log_scalar("ppl", math.exp(nll_loss_sum / ntokens), round=3)
-        metrics.log_scalar("wps", ntokens)
-        metrics.log_scalar("ups", nsentences)
-        metrics.log_scalar("wpb", ntokens)
-        metrics.log_scalar("bsz", nsentences)
