@@ -7,8 +7,10 @@ from sacrebleu import sentence_bleu
 from nltk.translate.meteor_score import single_meteor_score
 from dataclasses import dataclass, field
 
-import math
+from fairseq import utils
 from fairseq import metrics
+import math
+
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
@@ -90,3 +92,32 @@ class RLCriterion(FairseqCriterion):
         loss = loss.mean()
 
         return loss
+    
+    @staticmethod
+    def reduce_metrics(logging_outputs) -> None:
+        """Aggregate logging outputs from data parallel training."""
+        sample_size = utils.item(
+            sum(log.get("sample_size", 0) for log in logging_outputs)
+        )
+        loss = utils.item(sum(log.get("loss", 0) for log in logging_outputs))
+        nll_loss = utils.item(sum(log.get("nll_loss", 0) for log in logging_outputs))
+
+        metrics.log_scalar(
+            "loss", loss / sample_size / math.log(2), sample_size, round=3
+        )
+        metrics.log_scalar(
+            "nll_loss", nll_loss / sample_size / math.log(2), sample_size, round=3
+        )
+        metrics.log_derived(
+            "ppl", lambda meters: utils.get_perplexity(meters["loss"].avg)
+        )
+
+        for key in logging_outputs[0]:
+            if key[-5:] == "-loss":
+                val = sum(log.get(key, 0) for log in logging_outputs)
+                metrics.log_scalar(
+                    key[:-5],
+                    val / sample_size / math.log(2) if sample_size > 0 else 0.0,
+                    sample_size,
+                    round=3,
+                )
