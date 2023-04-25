@@ -53,20 +53,27 @@ class RLCriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def _compute_loss(self, outputs, targets, masks=None):
+        """
+        outputs: batch x len x d_model
+        targets: batch x len
+        masks:   batch x len
+        """
+
+        #padding mask, do not remove
         if masks is not None:
-            outputs, targets = outputs[masks], targets[masks]
+            masked_indices = masks.nonzero(as_tuple=True)
+
+            outputs_masked = outputs[masked_indices]
+            targets_masked = targets[masked_indices]
 
         with torch.no_grad():
-            if masks is not None:
-                outputs, targets = outputs[masks], targets[masks]
-
-        with torch.no_grad():
-            logits = F.softmax(outputs, dim=-1)
+            logits = F.softmax(outputs_masked, dim=-1)
             sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
             sampled_sentence = sampled_indices.tolist()
+
             tgt_dict = self.task.target_dictionary
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
-            target_sentence = tgt_dict.string(targets.tolist())
+            target_sentence = tgt_dict.string(targets_masked.tolist())
 
             if self.metric == "bleu":
                 R = sentence_bleu([target_sentence], sampled_sentence_string)
@@ -76,6 +83,9 @@ class RLCriterion(FairseqCriterion):
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
 
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs_selected = log_probs.gather(-1, sampled_indices.unsqueeze(-1)).squeeze(-1)
+        log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
         loss = -log_probs_selected * R
         loss = loss.mean()
+
+        return loss
+
