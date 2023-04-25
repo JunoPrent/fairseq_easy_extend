@@ -1,7 +1,7 @@
 import torch
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.scoring.bleu import Scorer as BleuScorer
+from fairseq.scoring.bleu import SacrebleuScorer
 from fairseq.scoring.meteor import MeteorScorer
 from fairseq.data import Dictionary
 
@@ -20,7 +20,7 @@ class RLCriterion(FairseqCriterion):
         self.metric = sentence_level_metric
         self.dictionary = task.target_dictionary
         if self.metric == 'bleu':
-            self.scorer = BleuScorer(task.args)
+            self.scorer = SacrebleuScorer(task.args)
         elif self.metric == 'meteor':
             self.scorer = MeteorScorer(task.args)
         else:
@@ -63,7 +63,6 @@ class RLCriterion(FairseqCriterion):
 
 
     def _compute_loss(self, outputs, targets, masks=None):
-        # ... (same as in your template)
 
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
