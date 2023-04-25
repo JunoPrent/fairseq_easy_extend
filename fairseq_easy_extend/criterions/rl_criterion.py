@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-from fairseq.data import Dictionary
 from fairseq.scoring import meteor, bertscore
 
 from dataclasses import dataclass, field
