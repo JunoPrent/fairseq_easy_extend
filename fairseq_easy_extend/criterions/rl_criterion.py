@@ -9,7 +9,7 @@ from fairseq.data import Dictionary
 from fairseq import utils
 from fairseq import metrics
 
-import sacrebleu
+from sacremoses import MosesDetokenizer
 from sacrebleu import sentence_bleu
 
 from nltk.translate.meteor_score import single_meteor_score
@@ -84,9 +84,9 @@ class RLCriterion(FairseqCriterion):
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
             # Detokenize the sentences
-            sampled_sentence_string = sacrebleu.detokenize(sampled_sentence_string.split())
-            target_sentence = sacrebleu.detokenize(target_sentence.split())
-
+            detokenizer = MosesDetokenizer()
+            sampled_sentence_string = detokenizer.detokenize(sampled_sentence_string.split())
+            target_sentence = detokenizer.detokenize(target_sentence.split())
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
