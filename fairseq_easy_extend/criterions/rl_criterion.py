@@ -14,7 +14,7 @@ import math
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
-    sentence_level_metric: str = field(default="bleu",
+    sentence_level_metric: str = field(default="meteor",
                                        metadata={"help": "sentence level metric"})
 
 @register_criterion("rl_loss", dataclass=RLCriterionConfig)
