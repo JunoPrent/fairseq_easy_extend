@@ -1,15 +1,20 @@
+import math
 import torch
 import torch.nn.functional as F
+
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 from fairseq.data import Dictionary
-from sacrebleu import sentence_bleu
-from nltk.translate.meteor_score import single_meteor_score
-from dataclasses import dataclass, field
 
 from fairseq import utils
 from fairseq import metrics
-import math
+
+import sacrebleu
+from sacrebleu import sentence_bleu
+
+from nltk.translate.meteor_score import single_meteor_score
+from dataclasses import dataclass, field
+
 
 
 @dataclass
@@ -77,6 +82,11 @@ class RLCriterion(FairseqCriterion):
             tgt_dict = self.task.target_dictionary
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
+
+            # Detokenize the sentences
+            sampled_sentence_string = sacrebleu.detokenize(sampled_sentence_string.split())
+            target_sentence = sacrebleu.detokenize(target_sentence.split())
+
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
