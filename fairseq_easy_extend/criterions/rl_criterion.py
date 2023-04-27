@@ -62,6 +62,7 @@ class RLCriterion(FairseqCriterion):
         }
         return loss, sample_size, logging_output
 
+
     def _compute_loss(self, outputs, targets, masks=None):
         """
         outputs: batch x len x d_model
@@ -69,11 +70,17 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
+        #padding mask, do not remove
         if masks is not None:
             masked_indices = masks.nonzero(as_tuple=True)
 
             outputs_masked = outputs[masked_indices]
             targets_masked = targets[masked_indices]
+
+        print("outputs_masked", outputs_masked[:1])
+        print("output_masked shape", outputs_masked.shape)
+        print("targets_masked", targets_masked[:1])
+        print("targets_masked shape", targets_masked.shape)
 
         with torch.no_grad():
             logits = F.softmax(outputs_masked, dim=-1)
@@ -84,40 +91,25 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            # Use the tokenizer from fairseq.data.encoders for decoding and detokenizing
+            # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
-            # Convert token ids to space-separated string
-            sampled_sentence_string = ' '.join(map(str, sampled_sentence))
-            target_sentence_string = ' '.join(map(str, targets_masked.tolist()))
-            # Decode and detokenize
-            sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
-            target_sentence = self.tokenizer.decode(target_sentence_string)
-
-            # Tokenize the strings for METEOR score calculation
-            sampled_sentence_tokens = sampled_sentence_string.split()
-            target_sentence_tokens = target_sentence.split()
+            sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
+            target_sentence = self.tokenizer.decode(targets_masked.tolist())
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
                 R = R.score  # Convert BLEUScore object to numeric value
             elif self.metric == "meteor":
-                R = single_meteor_score(target_sentence_tokens, sampled_sentence_tokens)
+                R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
-            
-        print("Sampled Sentence:", sampled_sentence_string)
-        print("Target Sentence:", target_sentence)
-        print("Reward:", R)
 
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
-
-        R_expanded = R.expand_as(log_probs_selected)
-        loss = -log_probs_selected * R_expanded
+        loss = -log_probs_selected * R
         loss = loss.mean()
 
         return loss
-
     
     @staticmethod
     def reduce_metrics(logging_outputs) -> None:
