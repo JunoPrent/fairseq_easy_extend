@@ -93,11 +93,12 @@ class RLCriterion(FairseqCriterion):
 
             print("Sampled Sentence:", sampled_sentence_string)
             print("Target Sentence:", target_sentence)
-            
+            print("Sample Sentence length: ", len(sampled_sentence_string))
+            print("Target Sentence length: ", len(target_sentence))
 
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
-            sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
+            sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(targets_masked.tolist())
 
             if self.metric == "bleu":
