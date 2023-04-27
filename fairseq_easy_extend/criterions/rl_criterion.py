@@ -91,6 +91,10 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
+            print("Sampled Sentence:", sampled_sentence_string)
+            print("Target Sentence:", target_sentence)
+            
+
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
@@ -103,7 +107,8 @@ class RLCriterion(FairseqCriterion):
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
-
+            
+        print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
         loss = -log_probs_selected * R
