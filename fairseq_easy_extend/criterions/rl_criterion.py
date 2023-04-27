@@ -1,6 +1,7 @@
 import math
 import torch
 import torch.nn.functional as F
+from argparse import Namespace
 
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
@@ -8,6 +9,7 @@ from fairseq.data import Dictionary
 
 from fairseq import utils
 from fairseq import metrics
+from fairseq.data import encoders
 
 from sacremoses import MosesDetokenizer
 from sacrebleu import sentence_bleu
@@ -67,7 +69,6 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        #padding mask, do not remove
         if masks is not None:
             masked_indices = masks.nonzero(as_tuple=True)
 
@@ -80,13 +81,11 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence = sampled_indices.tolist()
 
             tgt_dict = self.task.target_dictionary
-            sampled_sentence_string = tgt_dict.string(sampled_sentence)
-            target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            # Detokenize the sentences
-            detokenizer = MosesDetokenizer()
-            sampled_sentence_string = detokenizer.detokenize(sampled_sentence_string.split())
-            target_sentence = detokenizer.detokenize(target_sentence.split())
+            # Use the tokenizer from fairseq.data.encoders for decoding and detokenizing
+            self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
+            sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
+            target_sentence = self.tokenizer.decode(targets_masked.tolist())
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
@@ -102,6 +101,49 @@ class RLCriterion(FairseqCriterion):
         loss = loss.mean()
 
         return loss
+
+    # def _compute_loss(self, outputs, targets, masks=None):
+    #     """
+    #     outputs: batch x len x d_model
+    #     targets: batch x len
+    #     masks:   batch x len
+    #     """
+
+    #     #padding mask, do not remove
+    #     if masks is not None:
+    #         masked_indices = masks.nonzero(as_tuple=True)
+
+    #         outputs_masked = outputs[masked_indices]
+    #         targets_masked = targets[masked_indices]
+
+    #     with torch.no_grad():
+    #         logits = F.softmax(outputs_masked, dim=-1)
+    #         sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
+    #         sampled_sentence = sampled_indices.tolist()
+
+    #         tgt_dict = self.task.target_dictionary
+    #         sampled_sentence_string = tgt_dict.string(sampled_sentence)
+    #         target_sentence = tgt_dict.string(targets_masked.tolist())
+
+    #         # Detokenize the sentences
+    #         detokenizer = MosesDetokenizer()
+    #         sampled_sentence_string = detokenizer.detokenize(sampled_sentence_string.split())
+    #         target_sentence = detokenizer.detokenize(target_sentence.split())
+
+    #         if self.metric == "bleu":
+    #             R = sentence_bleu(target_sentence, [sampled_sentence_string])
+    #             R = R.score  # Convert BLEUScore object to numeric value
+    #         elif self.metric == "meteor":
+    #             R = single_meteor_score(target_sentence, sampled_sentence_string)
+    #         else:
+    #             raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
+
+    #     log_probs = F.log_softmax(outputs, dim=-1)
+    #     log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
+    #     loss = -log_probs_selected * R
+    #     loss = loss.mean()
+
+    #     return loss
     
     @staticmethod
     def reduce_metrics(logging_outputs) -> None:
