@@ -81,10 +81,12 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence = sampled_indices.tolist()
 
             tgt_dict = self.task.target_dictionary
+            sampled_sentence_string = tgt_dict.string(sampled_sentence)
+            target_sentence = tgt_dict.string(targets_masked.tolist())
 
             # Use the tokenizer from fairseq.data.encoders for decoding and detokenizing
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
-            sampled_sentence_string = self.tokenizer.detok.detokenize(sampled_sentence)
+            sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
             target_sentence = self.tokenizer.decode(targets_masked.tolist())
 
             if self.metric == "bleu":
@@ -94,10 +96,17 @@ class RLCriterion(FairseqCriterion):
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
+            
+
+        print("Sampled Sentence:", sampled_sentence_string)
+        print("Target Sentence:", target_sentence)
+        print("Reward:", R)
 
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
-        loss = -log_probs_selected * R
+
+        R_expanded = R.expand_as(log_probs_selected)
+        loss = -log_probs_selected * R_expanded
         loss = loss.mean()
 
         return loss
