@@ -93,15 +93,18 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence_string)
 
+            # Tokenize the strings for METEOR score calculation
+            sampled_sentence_tokens = sampled_sentence_string.split()
+            target_sentence_tokens = target_sentence.split()
+
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
                 R = R.score  # Convert BLEUScore object to numeric value
             elif self.metric == "meteor":
-                R = single_meteor_score(target_sentence, sampled_sentence_string)
+                R = single_meteor_score(target_sentence_tokens, sampled_sentence_tokens)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
             
-
         print("Sampled Sentence:", sampled_sentence_string)
         print("Target Sentence:", target_sentence)
         print("Reward:", R)
