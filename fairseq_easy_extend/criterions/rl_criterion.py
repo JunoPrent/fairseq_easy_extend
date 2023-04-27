@@ -86,8 +86,12 @@ class RLCriterion(FairseqCriterion):
 
             # Use the tokenizer from fairseq.data.encoders for decoding and detokenizing
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
-            sampled_sentence_string = self.tokenizer.decode(sampled_sentence)
-            target_sentence = self.tokenizer.decode(targets_masked.tolist())
+            # Convert token ids to space-separated string
+            sampled_sentence_string = ' '.join(map(str, sampled_sentence))
+            target_sentence_string = ' '.join(map(str, targets_masked.tolist()))
+            # Decode and detokenize
+            sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
+            target_sentence = self.tokenizer.decode(target_sentence_string)
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
