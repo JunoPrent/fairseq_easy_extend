@@ -1,6 +1,6 @@
 import argparse
 import ast
-import collections
+import collections.abc
 import inspect
 import logging
 import os
