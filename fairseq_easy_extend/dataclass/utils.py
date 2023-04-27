@@ -509,7 +509,7 @@ def _flatten_config(cfg, parent_key="", sep="_"):
     items = []
     for k, v in cfg.items():
         new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, collections.abc.MutableMapping):
             items.extend(_flatten_config(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))
