@@ -77,10 +77,10 @@ class RLCriterion(FairseqCriterion):
             outputs_masked = outputs[masked_indices]
             targets_masked = targets[masked_indices]
 
-        print("outputs_masked", outputs_masked[:1])
-        print("output_masked shape", outputs_masked.shape)
-        print("targets_masked", targets_masked[:1])
-        print("targets_masked shape", targets_masked.shape)
+        # print("outputs_masked", outputs_masked[:1])
+        # print("output_masked shape", outputs_masked.shape)
+        # print("targets_masked", targets_masked[:1])
+        # print("targets_masked shape", targets_masked.shape)
 
         with torch.no_grad():
             logits = F.softmax(outputs_masked, dim=-1)
@@ -91,10 +91,10 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            print("Sampled Sentence:", sampled_sentence_string)
-            print("Target Sentence:", target_sentence)
-            print("Sample Sentence length: ", len(sampled_sentence_string))
-            print("Target Sentence length: ", len(target_sentence))
+            # print("Sampled Sentence:", sampled_sentence_string)
+            # print("Target Sentence:", target_sentence)
+            # print("Sample Sentence length: ", len(sampled_sentence_string))
+            # print("Target Sentence length: ", len(target_sentence))
 
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
