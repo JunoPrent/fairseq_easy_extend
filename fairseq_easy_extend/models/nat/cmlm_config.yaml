@@ -1,7 +1,7 @@
 # @package _group_
 task:
   _name: translation_lev
-  data: ??? # path to data directory
+  data: /content/drive/MyDrive/NLP2-2023-ET/iwslt14.tokenized.de-en # path to data directory
   source_lang: de
   target_lang: en
   noise: random_mask
@@ -30,10 +30,13 @@ dataset:
 optimization:
   lr: [0.0005]
   update_freq: [8]
-  max_update: 20000
+  max_update: 2000
   stop_min_lr: 1e-09
 checkpoint:
   no_epoch_checkpoints: true
+  restore_file: /content/drive/MyDrive/NLP2-2023-ET/checkpoint_best.pt
+  reset_optimizer: true
+  save_dir: /content/drive/MyDrive/NLP2-2023-FT/model/
 common:
   log_format: simple
-  log_interval: 100
+  log_interval: 1
