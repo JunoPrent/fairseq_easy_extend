@@ -75,10 +75,10 @@ class RLCriterion(FairseqCriterion):
             outputs_masked = outputs[masks]
             targets_masked = targets[masks]
 
-        # print("outputs_masked", outputs_masked[:1])
-        # print("output_masked shape", outputs_masked.shape)
-        # print("targets_masked", targets_masked[:1])
-        # print("targets_masked shape", targets_masked.shape)
+        print("outputs_masked", outputs_masked[:1])
+        print("output_masked shape", outputs_masked.shape)
+        print("targets_masked", targets_masked[:1])
+        print("targets_masked shape", targets_masked.shape)
 
         with torch.no_grad():
             logits = F.softmax(outputs_masked, dim=-1)
@@ -94,10 +94,10 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
 
-            # print("Sampled Sentence:", sampled_sentence_string)
-            # print("Target Sentence:", target_sentence)
-            # print("Sample Sentence length: ", len(sampled_sentence_string))
-            # print("Target Sentence length: ", len(target_sentence))
+            print("Sampled Sentence:", sampled_sentence_string)
+            print("Target Sentence:", target_sentence)
+            print("Sample Sentence length: ", len(sampled_sentence_string))
+            print("Target Sentence length: ", len(target_sentence))
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
