@@ -109,8 +109,7 @@ class RLCriterion(FairseqCriterion):
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
-        loss = -(log_probs_selected * R)
+        loss = -(log_probs * R)
         loss = loss.mean()
         # print("Printing Loss: ", loss)
         return loss
