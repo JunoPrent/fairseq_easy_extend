@@ -72,14 +72,12 @@ class RLCriterion(FairseqCriterion):
 
         #padding mask, do not remove
         if masks is not None:
-            masked_indices = masks.nonzero(as_tuple=True)
+            outputs_masked = outputs[masks]
+            targets_masked = targets[masks]
 
-            outputs_masked = outputs[masked_indices]
-            targets_masked = targets[masked_indices]
-
-        # print("outputs_masked", outputs_masked[:1])
+        print("outputs_masked", outputs_masked[:1])
         # print("output_masked shape", outputs_masked.shape)
-        # print("targets_masked", targets_masked[:1])
+        print("targets_masked", targets_masked[:1])
         # print("targets_masked shape", targets_masked.shape)
 
         with torch.no_grad():
@@ -91,8 +89,8 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            # print("Sampled Sentence:", sampled_sentence_string)
-            # print("Target Sentence:", target_sentence)
+            print("Sampled Sentence:", sampled_sentence_string)
+            print("Target Sentence:", target_sentence)
             # print("Sample Sentence length: ", len(sampled_sentence_string))
             # print("Target Sentence length: ", len(target_sentence))
 
@@ -112,14 +110,10 @@ class RLCriterion(FairseqCriterion):
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
-
-        R_mean = R.mean()
-        R_std = R.std()
-        R_normalized = (R - R_mean) / (R_std + 1e-5) # Add a small constant to prevent division by zero
-        
-        loss = -log_probs_selected * R_normalized
+        log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
+        loss = -log_probs_selected * R
         loss = loss.mean()
+        print(loss)
         return loss
     
     @staticmethod
