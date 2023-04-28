@@ -75,9 +75,9 @@ class RLCriterion(FairseqCriterion):
             outputs_masked = outputs[masks]
             targets_masked = targets[masks]
 
-        print("outputs_masked", outputs_masked[:1])
+        # print("outputs_masked", outputs_masked[:1])
         # print("output_masked shape", outputs_masked.shape)
-        print("targets_masked", targets_masked[:1])
+        # print("targets_masked", targets_masked[:1])
         # print("targets_masked shape", targets_masked.shape)
 
         with torch.no_grad():
@@ -89,17 +89,15 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            # print("Sampled Sentence:", sampled_sentence_string)
-            # print("Target Sentence:", target_sentence)
-            # print("Sample Sentence length: ", len(sampled_sentence_string))
-            # print("Target Sentence length: ", len(target_sentence))
-
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
-            print("Sampled Sentence:", sampled_sentence_string)
-            print("Target Sentence:", target_sentence)
+
+            # print("Sampled Sentence:", sampled_sentence_string)
+            # print("Target Sentence:", target_sentence)
+            # print("Sample Sentence length: ", len(sampled_sentence_string))
+            # print("Target Sentence length: ", len(target_sentence))
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
@@ -108,13 +106,12 @@ class RLCriterion(FairseqCriterion):
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
-            
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
         loss = -log_probs * R
         loss = loss.mean()
-        print("Printing Loss: ", loss)
+        # print("Printing Loss: ", loss)
         return loss
     
     @staticmethod
