@@ -109,7 +109,8 @@ class RLCriterion(FairseqCriterion):
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
-        loss = -(log_probs * R)
+        log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
+        loss = -(log_probs_sampled * R)
         loss = loss.mean()
         # print("Printing Loss: ", loss)
         return loss
