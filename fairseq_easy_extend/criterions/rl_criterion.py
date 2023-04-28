@@ -114,15 +114,12 @@ class RLCriterion(FairseqCriterion):
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
 
-        # Normalize rewards
-        R = torch.tensor(R) if not isinstance(R, torch.Tensor) else R
-        R_mean = torch.mean(R)
-        R_std = torch.std(R)
-        R_normalized = (R - R_mean) / (R_std + 1e-6)
-
+        R_mean = R.mean()
+        R_std = R.std()
+        R_normalized = (R - R_mean) / (R_std + 1e-5) # Add a small constant to prevent division by zero
+        
         loss = -log_probs_selected * R_normalized
         loss = loss.mean()
-
         return loss
     
     @staticmethod
