@@ -108,10 +108,15 @@ class RLCriterion(FairseqCriterion):
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
         
         print("Reward:", R)
-        log_probs = F.log_softmax(outputs, dim=-1)
+        log_probs = F.log_softmax(outputs_masked, dim=-1)
         log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
-        loss = -(log_probs_sampled * R)
+        loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
+
+        # log_probs = F.log_softmax(outputs, dim=-1)
+        # log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
+        # loss = -(log_probs_sampled * R)
+        # loss = loss.mean()
         # print("Printing Loss: ", loss)
         return loss
     
