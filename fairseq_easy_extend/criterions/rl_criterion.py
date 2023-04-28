@@ -112,13 +112,11 @@ class RLCriterion(FairseqCriterion):
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
-        sampled_indices_masked = sampled_indices.masked_select(masks.squeeze(-1))
-        log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices_masked.unsqueeze(-1)).squeeze(-1)
-
-        # log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
+        log_probs_masked = log_probs[masks.unsqueeze(-1).expand_as(log_probs)]
+        log_probs_selected = log_probs_masked.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
         loss = -log_probs_selected * R
         loss = loss.mean()
-        print(loss)
+        print("Printing Loss: ", loss)
         return loss
     
     @staticmethod
