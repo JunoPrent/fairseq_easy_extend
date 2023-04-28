@@ -113,8 +113,8 @@ class RLCriterion(FairseqCriterion):
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
 
         # Normalize rewards
-        R_mean = torch.mean(R)
-        R_std = torch.std(R)
+        R_mean = torch.mean(torch.tensor(R))
+        R_std = torch.std(torch.tensor(R))
         R_normalized = (R - R_mean) / (R_std + 1e-6)
 
         loss = -log_probs_selected * R_normalized
