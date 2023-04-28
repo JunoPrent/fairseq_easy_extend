@@ -89,8 +89,8 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = tgt_dict.string(sampled_sentence)
             target_sentence = tgt_dict.string(targets_masked.tolist())
 
-            print("Sampled Sentence:", sampled_sentence_string)
-            print("Target Sentence:", target_sentence)
+            # print("Sampled Sentence:", sampled_sentence_string)
+            # print("Target Sentence:", target_sentence)
             # print("Sample Sentence length: ", len(sampled_sentence_string))
             # print("Target Sentence length: ", len(target_sentence))
 
@@ -98,6 +98,8 @@ class RLCriterion(FairseqCriterion):
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
+            print("Sampled Sentence:", sampled_sentence_string)
+            print("Target Sentence:", target_sentence)
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
@@ -110,7 +112,10 @@ class RLCriterion(FairseqCriterion):
         
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
+        sampled_indices_masked = sampled_indices.masked_select(masks.squeeze(-1))
+        log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices_masked.unsqueeze(-1)).squeeze(-1)
+
+        # log_probs_selected = log_probs.gather(dim=-1, index=sampled_indices.unsqueeze(-1)).squeeze(-1)
         loss = -log_probs_selected * R
         loss = loss.mean()
         print(loss)
