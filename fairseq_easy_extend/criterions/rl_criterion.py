@@ -18,7 +18,6 @@ from nltk.translate.meteor_score import single_meteor_score
 from dataclasses import dataclass, field
 
 
-
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
     sentence_level_metric: str = field(default="bleu",
@@ -112,7 +111,13 @@ class RLCriterion(FairseqCriterion):
         print("Reward:", R)
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_selected = log_probs[(*masked_indices, sampled_indices.unsqueeze(-1))].squeeze(-1)
-        loss = -log_probs_selected * R
+
+        # Normalize rewards
+        R_mean = torch.mean(R)
+        R_std = torch.std(R)
+        R_normalized = (R - R_mean) / (R_std + 1e-6)
+
+        loss = -log_probs_selected * R_normalized
         loss = loss.mean()
 
         return loss
