@@ -29,6 +29,7 @@ class RLCriterion(FairseqCriterion):
     def __init__(self, task, sentence_level_metric):
         super().__init__(task)
         self.metric = sentence_level_metric
+        self.tgt_dict = task.tgt_dict
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -79,9 +80,9 @@ class RLCriterion(FairseqCriterion):
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
             sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
 
-            tgt_dict = self.task.target_dictionary
-            sampled_sentence_string = tgt_dict.string(sample_idx) 
-            target_sentence = tgt_dict.string(targets)
+            # tgt_dict = self.task.target_dictionary
+            sampled_sentence_string = self.tgt_dict.string(sample_idx) 
+            target_sentence = self.tgt_dict.string(targets)
 
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
