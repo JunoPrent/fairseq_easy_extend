@@ -62,7 +62,6 @@ class RLCriterion(FairseqCriterion):
         }
         return loss, sample_size, logging_output
 
-
     def _compute_loss(self, outputs, targets, masks=None):
         """
         outputs: batch x len x d_model
@@ -70,34 +69,22 @@ class RLCriterion(FairseqCriterion):
         masks:   batch x len
         """
 
-        #padding mask, do not remove
-        if masks is not None:
-            outputs_masked = outputs[masks]
-            targets_masked = targets[masks]
-
-        print("outputs_masked", outputs_masked[:1])
-        print("output_masked shape", outputs_masked.shape)
-        print("targets_masked", targets_masked[:1])
-        print("targets_masked shape", targets_masked.shape)
+        bsz = outputs.size(0)
+        seq_len = outputs.size(1)
+        vocab_size = outputs.size(2)
 
         with torch.no_grad():
-            logits = F.softmax(outputs_masked, dim=-1)
-            sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
-            sampled_sentence = sampled_indices.tolist()
+            probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
+            sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
 
-            tgt_dict = self.task.target_dictionary
-            sampled_sentence_string = tgt_dict.string(sampled_sentence)
-            target_sentence = tgt_dict.string(targets_masked.tolist())
+            sampled_sentence_string = self.tgt_dict.string(sample_idx) 
+
+            target_sentence = self.tgt_dict.string(targets)
 
             # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
-
-            print("Sampled Sentence:", sampled_sentence_string)
-            print("Target Sentence:", target_sentence)
-            print("Sample Sentence length: ", len(sampled_sentence_string))
-            print("Target Sentence length: ", len(target_sentence))
 
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
@@ -106,19 +93,71 @@ class RLCriterion(FairseqCriterion):
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
-        
-        print("Reward:", R)
-        log_probs = F.log_softmax(outputs_masked, dim=-1)
-        log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
+
+        # Expand the reward to shape BxT
+        R = torch.tensor(R).expand_as(targets).float().to(targets.device)
+
+        if masks is not None:
+            outputs, targets = outputs[masks], targets[masks]
+            R, sample_idx = R[masks], sample_idx[masks]
+
+        log_probs = F.log_softmax(outputs, dim=-1)
+        log_probs_sampled = torch.gather(log_probs, 1, sample_idx.unsqueeze(1))
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
-
-        # log_probs = F.log_softmax(outputs, dim=-1)
-        # log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
-        # loss = -(log_probs_sampled * R)
-        # loss = loss.mean()
-        # print("Printing Loss: ", loss)
         return loss
+
+
+    # def _compute_loss(self, outputs, targets, masks=None):
+    #     """
+    #     outputs: batch x len x d_model
+    #     targets: batch x len
+    #     masks:   batch x len
+    #     """
+
+    #     #padding mask, do not remove
+    #     if masks is not None:
+    #         outputs_masked = outputs[masks]
+    #         targets_masked = targets[masks]
+
+    #     print("outputs_masked", outputs_masked[:1])
+    #     print("output_masked shape", outputs_masked.shape)
+    #     print("targets_masked", targets_masked[:1])
+    #     print("targets_masked shape", targets_masked.shape)
+
+    #     with torch.no_grad():
+    #         logits = F.softmax(outputs_masked, dim=-1)
+    #         sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
+    #         sampled_sentence = sampled_indices.tolist()
+
+    #         tgt_dict = self.task.target_dictionary
+    #         sampled_sentence_string = tgt_dict.string(sampled_sentence)
+    #         target_sentence = tgt_dict.string(targets_masked.tolist())
+
+    #         # Detokenize the sentences
+    #         self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
+    #         sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
+    #         target_sentence = self.tokenizer.decode(target_sentence)
+
+    #         print("Sampled Sentence:", sampled_sentence_string)
+    #         print("Target Sentence:", target_sentence)
+    #         print("Sample Sentence length: ", len(sampled_sentence_string))
+    #         print("Target Sentence length: ", len(target_sentence))
+
+    #         if self.metric == "bleu":
+    #             R = sentence_bleu(target_sentence, [sampled_sentence_string])
+    #             R = R.score  # Convert BLEUScore object to numeric value
+    #         elif self.metric == "meteor":
+    #             R = single_meteor_score(target_sentence, sampled_sentence_string)
+    #         else:
+    #             raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
+        
+    #     print("Reward:", R)
+    #     log_probs = F.log_softmax(outputs_masked, dim=-1)
+    #     log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
+    #     loss = -(log_probs_sampled.squeeze() * R)
+    #     loss = loss.mean()
+    #     return loss
     
     @staticmethod
     def reduce_metrics(logging_outputs) -> None:
