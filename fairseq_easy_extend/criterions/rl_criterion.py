@@ -86,6 +86,9 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
 
+            print("Sampled Sentence:", sampled_sentence_string)
+            print("Target Sentence:", target_sentence)
+
             if self.metric == "bleu":
                 R = sentence_bleu(target_sentence, [sampled_sentence_string])
                 R = R.score  # Convert BLEUScore object to numeric value
