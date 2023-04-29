@@ -96,6 +96,7 @@ class RLCriterion(FairseqCriterion):
 
         # Expand the reward to shape BxT
         R = torch.tensor(R).expand_as(targets).float().to(targets.device)
+        print("Reward:", R)
 
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
