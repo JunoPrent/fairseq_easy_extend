@@ -93,7 +93,7 @@ class RLCriterion(FairseqCriterion):
             print("Target Sentence:", target_sentence)
 
             if self.metric == "bleu":
-                R = sentence_bleu(target_sentence, [sampled_sentence_string])
+                R = sentence_bleu(sampled_sentence_string, [target_sentence])
                 R = R.score  # Convert BLEUScore object to numeric value
             elif self.metric == "meteor":
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
