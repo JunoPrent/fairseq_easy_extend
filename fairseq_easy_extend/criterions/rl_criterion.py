@@ -11,9 +11,7 @@ from fairseq import utils
 from fairseq import metrics
 from fairseq.data import encoders
 
-from sacremoses import MosesDetokenizer
-from sacrebleu import sentence_bleu
-
+from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.meteor_score import single_meteor_score
 from dataclasses import dataclass, field
 
@@ -80,21 +78,15 @@ class RLCriterion(FairseqCriterion):
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
             sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
 
-            # tgt_dict = self.task.target_dictionary
             sampled_sentence_string = self.tgt_dict.string(sample_idx) 
             target_sentence = self.tgt_dict.string(targets)
 
-            # Detokenize the sentences
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
 
-            # print("Sampled Sentence:", sampled_sentence_string)
-            # print("Target Sentence:", target_sentence)
-
             if self.metric == "bleu":
-                R = sentence_bleu(sampled_sentence_string, [target_sentence])
-                R = R.score  # Convert BLEUScore object to numeric value
+                R = sentence_bleu([target_sentence.split()], sampled_sentence_string.split())
             elif self.metric == "meteor":
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
@@ -114,59 +106,7 @@ class RLCriterion(FairseqCriterion):
         loss = loss.mean()
         print("loss:", loss)
         return loss
-
-
-    # def _compute_loss(self, outputs, targets, masks=None):
-    #     """
-    #     outputs: batch x len x d_model
-    #     targets: batch x len
-    #     masks:   batch x len
-    #     """
-
-    #     #padding mask, do not remove
-    #     if masks is not None:
-    #         outputs_masked = outputs[masks]
-    #         targets_masked = targets[masks]
-
-    #     print("outputs_masked", outputs_masked[:1])
-    #     print("output_masked shape", outputs_masked.shape)
-    #     print("targets_masked", targets_masked[:1])
-    #     print("targets_masked shape", targets_masked.shape)
-
-    #     with torch.no_grad():
-    #         logits = F.softmax(outputs_masked, dim=-1)
-    #         sampled_indices = torch.multinomial(logits, 1).squeeze(-1)
-    #         sampled_sentence = sampled_indices.tolist()
-
-    #         tgt_dict = self.task.target_dictionary
-    #         sampled_sentence_string = tgt_dict.string(sampled_sentence)
-    #         target_sentence = tgt_dict.string(targets_masked.tolist())
-
-    #         # Detokenize the sentences
-    #         self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
-    #         sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
-    #         target_sentence = self.tokenizer.decode(target_sentence)
-
-    #         print("Sampled Sentence:", sampled_sentence_string)
-    #         print("Target Sentence:", target_sentence)
-    #         print("Sample Sentence length: ", len(sampled_sentence_string))
-    #         print("Target Sentence length: ", len(target_sentence))
-
-    #         if self.metric == "bleu":
-    #             R = sentence_bleu(target_sentence, [sampled_sentence_string])
-    #             R = R.score  # Convert BLEUScore object to numeric value
-    #         elif self.metric == "meteor":
-    #             R = single_meteor_score(target_sentence, sampled_sentence_string)
-    #         else:
-    #             raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
         
-    #     print("Reward:", R)
-    #     log_probs = F.log_softmax(outputs_masked, dim=-1)
-    #     log_probs_sampled = torch.gather(log_probs, 1, sampled_indices.unsqueeze(1))
-    #     loss = -(log_probs_sampled.squeeze() * R)
-    #     loss = loss.mean()
-    #     return loss
-    
     @staticmethod
     def reduce_metrics(logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
