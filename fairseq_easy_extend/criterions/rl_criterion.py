@@ -106,6 +106,7 @@ class RLCriterion(FairseqCriterion):
         log_probs_sampled = torch.gather(log_probs, 1, sample_idx.unsqueeze(1))
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
+        print("loss:", loss)
         return loss
 
 
