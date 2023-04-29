@@ -72,6 +72,8 @@ class RLCriterion(FairseqCriterion):
         bsz = outputs.size(0)
         seq_len = outputs.size(1)
         vocab_size = outputs.size(2)
+        print("outputs", outputs)
+        print("targets", targets)
 
         with torch.no_grad():
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
