@@ -73,8 +73,8 @@ class RLCriterion(FairseqCriterion):
         bsz = outputs.size(0)
         seq_len = outputs.size(1)
         vocab_size = outputs.size(2)
-        print("outputs", outputs)
-        print("targets", targets)
+        # print("outputs", outputs)
+        # print("targets", targets)
 
         with torch.no_grad():
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
@@ -89,8 +89,8 @@ class RLCriterion(FairseqCriterion):
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
 
-            print("Sampled Sentence:", sampled_sentence_string)
-            print("Target Sentence:", target_sentence)
+            # print("Sampled Sentence:", sampled_sentence_string)
+            # print("Target Sentence:", target_sentence)
 
             if self.metric == "bleu":
                 R = sentence_bleu(sampled_sentence_string, [target_sentence])
@@ -101,9 +101,9 @@ class RLCriterion(FairseqCriterion):
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
 
         # Expand the reward to shape BxT
-        R = torch.tensor(R).expand_as(targets).float().to(targets.device)
         print("Reward:", R)
-
+        R = torch.tensor(R).expand_as(targets).float().to(targets.device)
+        
         if masks is not None:
             outputs, targets = outputs[masks], targets[masks]
             R, sample_idx = R[masks], sample_idx[masks]
