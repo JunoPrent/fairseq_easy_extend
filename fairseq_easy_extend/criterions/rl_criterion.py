@@ -94,14 +94,16 @@ class RLCriterion(FairseqCriterion):
 
             if self.metric == "bleu":
                 R = sentence_bleu(references=[target_sentence.split()], hypothesis=sampled_sentence_string.split())
+                wandb.log({"bleu_reward": R})
             elif self.metric == "chrf":
                 R = sentence_chrf(reference=target_sentence, hypothesis=sampled_sentence_string)
+                wandb.log({"chrf_reward": R})
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
 
         # Expand the reward to shape BxT
         print("Reward:", R)
-        wandb.log({"reward": R})
+        
         R = torch.tensor(R).expand((bsz, seq_len)).float().to(targets.device)
         print("Reward shape: ", R.shape)
         
