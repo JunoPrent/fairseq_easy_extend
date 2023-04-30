@@ -12,10 +12,14 @@ from fairseq import metrics
 from fairseq.data import encoders
 
 from nltk.translate.bleu_score import sentence_bleu
-from nltk.translate.meteor_score import single_meteor_score
+# from nltk.translate.meteor_score import single_meteor_score
+from nltk.translate.chrf_score import sentence_chrf
 from dataclasses import dataclass, field
 
+import wandb
 
+
+wandb.init(project="rl_criterion")
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
@@ -67,23 +71,20 @@ class RLCriterion(FairseqCriterion):
         targets: batch x len
         masks:   batch x len
         """
-
         bsz = outputs.size(0)
         seq_len = outputs.size(1)
         vocab_size = outputs.size(2)
         print("bsz: ", bsz)
         print("seq_len: ", seq_len)
         print("vocab_size: ", vocab_size)
-        # print("outputs: ", outputs)
-        # print("targets", targets)
 
         with torch.no_grad():
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
             sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
             # print("sample_idx: ", sample_idx)
 
-            sampled_sentence_string = self.tgt_dict.string(sample_idx) 
-            target_sentence = self.tgt_dict.string(targets)
+            sampled_sentence_string = self.tgt_dict.string(sample_idx, bpe_symbol="@@") 
+            target_sentence = self.tgt_dict.string(targets, bpe_symbol="@@")
             # print("sampled_sentence_string: ", sampled_sentence_string)
 
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
@@ -93,8 +94,8 @@ class RLCriterion(FairseqCriterion):
 
             if self.metric == "bleu":
                 R = sentence_bleu(references=[target_sentence.split()], hypothesis=sampled_sentence_string.split())
-            elif self.metric == "meteor":
-                R = single_meteor_score(target_sentence, sampled_sentence_string)
+            elif self.metric == "chrf":
+                R = sentence_chrf(reference=target_sentence, hypothesis=sampled_sentence_string)
             else:
                 raise ValueError("Invalid sentence_level_metric. Choose 'bleu' or 'meteor'.")
 
@@ -107,16 +108,12 @@ class RLCriterion(FairseqCriterion):
             outputs, targets = outputs[masks], targets[masks]
             R, sample_idx = R[masks], sample_idx[masks]
 
-        # print("masked outputs: ", outputs)
         log_probs = F.log_softmax(outputs, dim=-1)
-        print("log_probs.shape: ", log_probs.shape)
-        print("log_probs: ", log_probs)
         log_probs_sampled = torch.gather(log_probs, -1, sample_idx.unsqueeze(1))
-        print("log_probs_sampled.shape: ", log_probs_sampled.shape)
-        print("log_probs_sampled: ", log_probs_sampled)
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
         print("loss:", loss)
+        wandb.log({"reward": R.item(), "loss": loss.item()})
         return loss
         
     @staticmethod
