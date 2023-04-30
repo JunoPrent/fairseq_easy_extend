@@ -86,7 +86,7 @@ class RLCriterion(FairseqCriterion):
             target_sentence = self.tokenizer.decode(target_sentence)
 
             if self.metric == "bleu":
-                R = sentence_bleu([target_sentence.split()], sampled_sentence_string.split())
+                R = sentence_bleu(references=[target_sentence.split()], hypothesis=sampled_sentence_string.split())
             elif self.metric == "meteor":
                 R = single_meteor_score(target_sentence, sampled_sentence_string)
             else:
