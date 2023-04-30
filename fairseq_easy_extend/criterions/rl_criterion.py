@@ -116,13 +116,12 @@ class RLCriterion(FairseqCriterion):
         
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
-        
+
         print("loss:", loss)
         if self.metric == "bleu":
                 wandb.log({"bleu_loss": loss})
         elif self.metric == "chrf":
                 wandb.log({"chrf_loss": loss})
-        
         return loss
         
     @staticmethod
