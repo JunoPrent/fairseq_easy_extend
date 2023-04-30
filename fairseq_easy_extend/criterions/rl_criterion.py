@@ -113,10 +113,16 @@ class RLCriterion(FairseqCriterion):
 
         log_probs = F.log_softmax(outputs, dim=-1)
         log_probs_sampled = torch.gather(log_probs, -1, sample_idx.unsqueeze(1))
+        
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
+        
         print("loss:", loss)
-        wandb.log({"loss": loss})
+        if self.metric == "bleu":
+                wandb.log({"bleu_loss": loss})
+        elif self.metric == "chrf":
+                wandb.log({"chrf_loss": loss})
+        
         return loss
         
     @staticmethod
