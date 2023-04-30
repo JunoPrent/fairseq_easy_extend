@@ -71,22 +71,22 @@ class RLCriterion(FairseqCriterion):
         bsz = outputs.size(0)
         seq_len = outputs.size(1)
         vocab_size = outputs.size(2)
-        print("outputs: ", outputs)
+        # print("outputs: ", outputs)
         # print("targets", targets)
 
         with torch.no_grad():
             probs = F.softmax(outputs, dim=-1).view(-1, vocab_size)
             sample_idx  = torch.multinomial(probs, 1, replacement=True).view(bsz, seq_len)
-            print("sample_idx: ", sample_idx)
+            # print("sample_idx: ", sample_idx)
 
             sampled_sentence_string = self.tgt_dict.string(sample_idx) 
             target_sentence = self.tgt_dict.string(targets)
-            print("sampled_sentence_string: ", sampled_sentence_string)
+            # print("sampled_sentence_string: ", sampled_sentence_string)
 
             self.tokenizer = encoders.build_tokenizer(Namespace(tokenizer='moses'))
             sampled_sentence_string = self.tokenizer.decode(sampled_sentence_string)
             target_sentence = self.tokenizer.decode(target_sentence)
-            print("sampled_sentence_string_detokenized: ", sampled_sentence_string)
+            # print("sampled_sentence_string_detokenized: ", sampled_sentence_string)
 
             if self.metric == "bleu":
                 R = sentence_bleu(references=[target_sentence.split()], hypothesis=sampled_sentence_string.split())
@@ -104,9 +104,10 @@ class RLCriterion(FairseqCriterion):
             outputs, targets = outputs[masks], targets[masks]
             R, sample_idx = R[masks], sample_idx[masks]
 
-        print("masked outputs: ", outputs)
+        # print("masked outputs: ", outputs)
         log_probs = F.log_softmax(outputs, dim=-1)
-        log_probs_sampled = torch.gather(log_probs, 1, sample_idx.unsqueeze(1))
+        log_probs_sampled = torch.gather(log_probs, 2, sample_idx.unsqueeze(2))
+        print("log_probs_sampled.shape: ", log_probs_sampled.shape)
         print("log_probs_sampled: ", log_probs_sampled)
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
