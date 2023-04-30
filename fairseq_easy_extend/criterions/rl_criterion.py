@@ -23,7 +23,7 @@ wandb.init(project="rl_criterion")
 
 @dataclass
 class RLCriterionConfig(FairseqDataclass):
-    sentence_level_metric: str = field(default="bleu",
+    sentence_level_metric: str = field(default="chrf",
                                        metadata={"help": "sentence level metric"})
 
 @register_criterion("rl_loss", dataclass=RLCriterionConfig)
