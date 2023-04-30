@@ -111,7 +111,7 @@ class RLCriterion(FairseqCriterion):
         log_probs = F.log_softmax(outputs, dim=-1)
         print("log_probs.shape: ", log_probs.shape)
         print("log_probs: ", log_probs)
-        log_probs_sampled = torch.gather(log_probs, 2, sample_idx.unsqueeze(1))
+        log_probs_sampled = torch.gather(log_probs, 1, sample_idx.unsqueeze(1))
         print("log_probs_sampled.shape: ", log_probs_sampled.shape)
         print("log_probs_sampled: ", log_probs_sampled)
         loss = -(log_probs_sampled.squeeze() * R)
