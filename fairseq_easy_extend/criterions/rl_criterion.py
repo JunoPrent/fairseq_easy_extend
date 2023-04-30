@@ -101,6 +101,7 @@ class RLCriterion(FairseqCriterion):
 
         # Expand the reward to shape BxT
         print("Reward:", R)
+        wandb.log({"reward": R})
         R = torch.tensor(R).expand((bsz, seq_len)).float().to(targets.device)
         print("Reward shape: ", R.shape)
         
@@ -113,7 +114,7 @@ class RLCriterion(FairseqCriterion):
         loss = -(log_probs_sampled.squeeze() * R)
         loss = loss.mean()
         print("loss:", loss)
-        wandb.log({"reward": R.item(), "loss": loss.item()})
+        wandb.log({"loss": loss})
         return loss
         
     @staticmethod
